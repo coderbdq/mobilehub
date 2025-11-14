@@ -13,9 +13,13 @@ function LoginPage({ setAdmin }) {
     setError('');
     try {
       const response = await apiClient.post('/auth/signin', { email, password });
+      
       localStorage.setItem('adminToken', response.data.token);
       setAdmin(true); 
-      navigate('/admin');
+      
+      // FIX: Chuyển hướng về /admin và ÉP TẢI LẠI TRANG
+      window.location.href = '/admin'; 
+      
     } catch (err) { 
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại email hoặc mật khẩu.'); 
         console.error(err); 

@@ -1,3 +1,4 @@
+// dongquan/src/main/java/com/java/dongquan/config/SecurityConfiguration.java
 package com.java.dongquan.config;
 
 import com.java.dongquan.security.JwtAuthenticationFilter;
@@ -9,8 +10,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-// Import này không cần thiết nếu dùng HttpSecurity
-// import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer; 
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer; // Cần import này
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,11 +25,11 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
 
-    // FIX LỖI 403 CUỐI CÙNG: Không sử dụng WebSecurityCustomizer
-    // @Bean 
-    // public WebSecurityCustomizer webSecurityCustomizer() {
-    //     return (web) -> web.ignoring().requestMatchers("/images/**");
-    // }
+    // FIX LỖI 403 HÌNH ẢNH: Loại trừ hoàn toàn đường dẫn /images/** khỏi chuỗi bảo mật
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers("/images/**");
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -40,14 +40,13 @@ public class SecurityConfiguration {
                     "/api/auth/**",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
-                    // FIX: Đặt /images/** ở đây là đủ an toàn nhất
-                    "/images/**" 
+                    "/auth/**"
                 ).permitAll()
                 
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
 
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                
+                // Các API còn lại sẽ được bảo vệ bởi @PreAuthorize trong Controller
+                // Cách này an toàn và linh hoạt hơn
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

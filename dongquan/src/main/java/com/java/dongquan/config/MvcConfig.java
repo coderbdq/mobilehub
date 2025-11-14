@@ -17,12 +17,12 @@ public class MvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // FIX LỖI 404: Đảm bảo Spring luôn tìm file bằng tiền tố 'file:///'
-        // và sử dụng đường dẫn tuyệt đối để tránh lỗi môi trường.
+        // FIX: Cấu hình chuẩn nhất cho Windows và Spring Boot
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
-        String uploadResourcePath = "file:///" + uploadPath.toString().replace("\\", "/");
+        // Cần sử dụng tiền tố file: và đường dẫn chuẩn cho Windows
+        String uploadResourcePath = "file:///" + uploadPath.toString().replace("\\", "/") + "/";
         
-        // Cấu hình để khi truy cập /images/**, nó sẽ lấy file từ thư mục upload
+        // Cấu hình để khi truy cập /images/**, nó sẽ lấy file từ đường dẫn FILE:
         registry.addResourceHandler("/images/**")
                 .addResourceLocations(uploadResourcePath);
     }

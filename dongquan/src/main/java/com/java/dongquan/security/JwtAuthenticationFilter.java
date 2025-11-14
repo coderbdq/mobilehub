@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collection;
 
 @Component
 @RequiredArgsConstructor
@@ -31,7 +33,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain) throws ServletException, IOException {
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
 
@@ -40,29 +43,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        try {
-            final String jwt = authHeader.substring(7);
-            final String userEmail = jwtService.extractUsername(jwt);
+        final String jwt = authHeader.substring(7);
 
+        try {
+            final String userEmail = jwtService.extractUsername(jwt);
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                logger.info("JWT filter: Email extracted from token: {}", userEmail);
+
+                logger.info("JWT filter: Email extracted from token -> {}", userEmail);
+
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    logger.info("JWT filter: Token is valid for user: {}", userDetails.getUsername());
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities());
+                    Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+
+                    // Log quyền của user để debug rõ ràng
+                    logger.info("JWT filter: Token is valid for user: {}", userEmail);
+                    logger.info("JWT filter: Authorities: {}", authorities);
+
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    authorities
+                            );
+
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    logger.info("JWT filter: Authentication set for user: {}", userDetails.getUsername());
+
+                    logger.info("JWT filter: Authentication set for user: {}", userEmail);
                 } else {
-                    logger.warn("JWT filter: Token is NOT valid for user: {}", userEmail);
+                    logger.warn("JWT filter: Token NOT valid for user: {}", userEmail);
                 }
             }
         } catch (Exception e) {
-            logger.error("JWT filter: Error processing JWT token.", e);
+            logger.error("JWT filter: Error while processing JWT token", e);
         }
 
         filterChain.doFilter(request, response);

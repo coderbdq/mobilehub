@@ -1,28 +1,30 @@
 import axios from 'axios'; 
 
-// Cấu hình Axios instance
 const apiClient = axios.create({
   baseURL: 'http://localhost:8080/api',
 });
 
-// Danh sách các API công khai KHÔNG NÊN gửi token
+// Danh sách các API công khai (chỉ áp dụng cho phương thức GET)
 const PUBLIC_API_PATHS = ['/products', '/categories']; 
 
-// Interceptor để tự động đính kèm token vào mỗi request
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('adminToken');
-    const url = config.url.split('?')[0]; // Lấy phần đường dẫn chính
+    const url = config.url.split('?')[0]; 
+    const method = config.method.toUpperCase();
 
-    // FIX LỖI 403: KHÔNG gửi token nếu API là public
-    const isPublicApi = PUBLIC_API_PATHS.some(path => url.includes(path));
+    // FIX LỖI: Cần so sánh với URL gốc (baseURL + path)
+    const isPublicGetApi = (method === 'GET') && 
+                           PUBLIC_API_PATHS.some(path => url.startsWith(path));
 
-    if (token && isPublicApi) {
-        // RẤT QUAN TRỌNG: Nếu là API Public, xóa header Authorization
-        delete config.headers['Authorization'];
-    } else if (token) {
-        // Nếu là API cần bảo mật, gửi token
-        config.headers['Authorization'] = `Bearer ${token}`;
+    if (token) {
+        if (isPublicGetApi) {
+            // Đây là API public GET, không gửi token
+            delete config.headers['Authorization'];
+        } else {
+            // Đây là API cần bảo mật (PUT/POST/DELETE), GỬI TOKEN
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
     }
 
     return config;

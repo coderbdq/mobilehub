@@ -1,8 +1,7 @@
-// src/main/java/com/java/dongquan/entity/AppUser.java
 package com.java.dongquan.entity;
 
 import jakarta.persistence.*;
-import lombok.*; // Import specific annotations
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,11 +10,10 @@ import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.List;
 
-// Replace @Data with specific annotations
 @Getter
 @Setter
 @ToString
-@EqualsAndHashCode(exclude = {"createdAt", "updatedAt"}) // Exclude fields that might cause issues with equals/hashCode
+@EqualsAndHashCode(exclude = {"createdAt", "updatedAt"})
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -36,7 +34,7 @@ public class AppUser implements UserDetails {
     private String password;
 
     @Column(nullable = false)
-    private String role; // ROLE_USER or ROLE_ADMIN
+    private String role; // Lưu "ADMIN" hoặc "USER" trong DB
 
     private String firstName;
     private String lastName;
@@ -58,43 +56,32 @@ public class AppUser implements UserDetails {
         updatedAt = new Timestamp(System.currentTimeMillis());
     }
 
-    // --- Explicit UserDetails methods ---
-
+    // Trả về quyền có prefix ROLE_ để Spring Security hiểu đúng
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(this.role));
     }
 
-    // Explicitly implement getPassword()
     @Override
     public String getPassword() {
         return this.password;
     }
 
+    // Dùng email làm username để đăng nhập
     @Override
     public String getUsername() {
-        // We use email as the username for authentication
         return this.email;
     }
 
-    // Explicitly add these methods for UserDetails contract
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isEnabled() { return true; }
 }

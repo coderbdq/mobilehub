@@ -27,8 +27,8 @@ public class Category {
     @Column(nullable = false, unique = true)
     private String slug;
     
-    @Column(name = "image_url") // <-- ĐÃ SỬA: Phải là image_url (Snake Case)
-    private String imageUrl; // <-- ĐÃ SỬA: Phải là imageUrl (Camel Case)
+    @Column(name = "image_url") // <-- Tên cột trong DB phải là image_url
+    private String imageUrl; // <-- Tên trường trong Java là imageUrl
 
     @Column(name = "created_at", updatable = false)
     private Timestamp createdAt;
