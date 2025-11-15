@@ -1,0 +1,21 @@
+.checkout-container {
+  padding-bottom: 40px;
+}
+
+.checkout-box,
+.checkout-summary {
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+}
+
+.checkout-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.pay-option {
+  display: block;
+  margin-bottom: 8px;
+}

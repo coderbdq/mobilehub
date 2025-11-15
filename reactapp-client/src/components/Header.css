@@ -1,0 +1,17 @@
+.mh-header {
+  background: #ffe200;
+}
+
+.mh-logo {
+  font-size: 22px;
+  color: black;
+}
+
+.mh-search input {
+  width: 260px;
+}
+
+.mh-icon {
+  font-size: 20px;
+  color: black;
+}

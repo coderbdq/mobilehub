@@ -36,6 +36,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+
+        // Các API public => không cần JWT
+        if (isPublicRequest(path, method)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // API private => kiểm tra JWT
         final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -49,36 +59,46 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String userEmail = jwtService.extractUsername(jwt);
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                logger.info("JWT filter: Email extracted from token -> {}", userEmail);
-
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 
-                    // Log quyền của user để debug rõ ràng
-                    logger.info("JWT filter: Token is valid for user: {}", userEmail);
-                    logger.info("JWT filter: Authorities: {}", authorities);
+                    Collection<? extends GrantedAuthority> authorities =
+                            userDetails.getAuthorities();
 
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    authorities
+                                    userDetails, null, authorities
                             );
 
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
 
-                    logger.info("JWT filter: Authentication set for user: {}", userEmail);
-                } else {
-                    logger.warn("JWT filter: Token NOT valid for user: {}", userEmail);
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (Exception e) {
-            logger.error("JWT filter: Error while processing JWT token", e);
+            logger.error("JWT filter: Error validating token", e);
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPublicRequest(String path, String method) {
+        if (path.startsWith("/api/auth/")) return true;
+
+        if ("GET".equalsIgnoreCase(method)
+                && (path.startsWith("/api/products")
+                || path.startsWith("/api/categories"))) {
+            return true;
+        }
+
+        if (path.startsWith("/images/")) return true;
+
+        if (path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs")) return true;
+
+        return false;
     }
 }

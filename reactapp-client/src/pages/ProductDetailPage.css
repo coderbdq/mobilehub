@@ -1,0 +1,48 @@
+/* path: reactapp-client/src/pages/ProductDetailPage.css */
+
+.pd-img {
+  width: 90%;
+  border-radius: 10px;
+}
+
+.pd-title {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.pd-price {
+  font-size: 22px;
+  color: #d0021b;
+  font-weight: bold;
+}
+
+.pd-spec li {
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+.pd-related-card {
+  border-radius: 10px;
+  transition: 0.2s;
+}
+
+.pd-related-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.pd-related-img {
+  width: 100%;
+  padding: 10px;
+}
+
+.pd-related-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.pd-related-price {
+  color: #d0021b;
+  font-weight: bold;
+}

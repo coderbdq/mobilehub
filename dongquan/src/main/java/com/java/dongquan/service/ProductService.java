@@ -1,4 +1,4 @@
-// src/main/java/com/java/dongquan/service/ProductService.java
+// path: dongquan/src/main/java/com/java/dongquan/service/ProductService.java
 package com.java.dongquan.service;
 
 import com.java.dongquan.dto.product.ProductRequestDTO;
@@ -11,8 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,12 +22,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
 
-    @Transactional(readOnly = true)
-    public List<ProductResponseDTO> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(this::mapToResponseDTO)
-                .collect(Collectors.toList());
-    }
+    // ===================== PRODUCT CRUD ===================== //
 
     @Transactional(readOnly = true)
     public ProductResponseDTO getProductById(Long id) {
@@ -36,73 +32,142 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponseDTO createProduct(ProductRequestDTO requestDTO) {
-        Category category = categoryRepository.findById(requestDTO.getCategoryId()) // Use getter
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục với id: " + requestDTO.getCategoryId())); // Use getter
+    public ProductResponseDTO createProduct(ProductRequestDTO req) {
+        Category category = categoryRepository.findById(req.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục"));
 
         Product product = new Product();
-        mapRequestToEntity(requestDTO, product, category);
+        mapRequestToEntity(req, product, category);
 
-        Product savedProduct = productRepository.save(product);
-        return mapToResponseDTO(savedProduct);
+        return mapToResponseDTO(productRepository.save(product));
     }
 
     @Transactional
-    public ProductResponseDTO updateProduct(Long id, ProductRequestDTO requestDTO) {
+    public ProductResponseDTO updateProduct(Long id, ProductRequestDTO req) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm với id: " + id));
-        Category category = categoryRepository.findById(requestDTO.getCategoryId()) // Use getter
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục với id: " + requestDTO.getCategoryId())); // Use getter
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
 
-        mapRequestToEntity(requestDTO, product, category);
+        Category category = categoryRepository.findById(req.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục"));
 
-        Product updatedProduct = productRepository.save(product);
-        return mapToResponseDTO(updatedProduct);
+        mapRequestToEntity(req, product, category);
+
+        return mapToResponseDTO(productRepository.save(product));
     }
 
     @Transactional
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm với id: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
         productRepository.delete(product);
     }
 
+    // ===================== FILTER + SEARCH + SORT ===================== //
 
-    // --- Helper methods ---
+    public List<ProductResponseDTO> filterProducts(
+            String q,
+            String brand,
+            String price,
+            String sort,
+            Long categoryId
+    ) {
 
-    private ProductResponseDTO mapToResponseDTO(Product product) {
-        if (product == null) {
-            return null;
+        // 🔥 FIX: Chuỗi rỗng ("") phải chuyển thành NULL
+        if (q != null && q.trim().isEmpty()) q = null;
+        if (brand != null && brand.trim().isEmpty()) brand = null;
+        if (price != null && price.trim().isEmpty()) price = null;
+        if (sort != null && sort.trim().isEmpty()) sort = null;
+
+        BigDecimal min = null;
+        BigDecimal max = null;
+
+        // Parse range
+        if (price != null && price.contains("-")) {
+            String[] parts = price.split("-");
+            min = new BigDecimal(parts[0]);
+            max = new BigDecimal(parts[1]);
         }
-        // Use builder for cleaner mapping
+
+        // Log để debug
+        System.out.println("==== PRODUCT FILTER ====");
+        System.out.println("q = " + q);
+        System.out.println("brand = " + brand);
+        System.out.println("price = " + price);
+        System.out.println("min = " + min);
+        System.out.println("max = " + max);
+        System.out.println("sort = " + sort);
+        System.out.println("categoryId = " + categoryId);
+
+        // Query DB
+        List<Product> products = productRepository.filterProducts(
+                q,
+                brand,
+                categoryId,
+                min,
+                max
+        );
+
+        // Convert to DTO
+        List<ProductResponseDTO> dtoList = products.stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+
+        // Sort
+        if ("price_asc".equals(sort)) {
+            dtoList = dtoList.stream()
+                    .sorted(Comparator.comparing(ProductResponseDTO::getPrice))
+                    .toList();
+        }
+
+        if ("price_desc".equals(sort)) {
+            dtoList = dtoList.stream()
+                    .sorted(Comparator.comparing(ProductResponseDTO::getPrice).reversed())
+                    .toList();
+        }
+
+        return dtoList;
+    }
+
+    // ===================== GET BRANDS ===================== //
+
+    public List<String> getAllBrands() {
+        return productRepository.findAll().stream()
+                .map(Product::getBrand)
+                .distinct()
+                .toList();
+    }
+
+    // ===================== MAPPER ===================== //
+
+    private ProductResponseDTO mapToResponseDTO(Product p) {
         return ProductResponseDTO.builder()
-                .id(product.getId())
-                .name(product.getName())
-                .brand(product.getBrand())
-                .price(product.getPrice())
-                .color(product.getColor())
-                .ram(product.getRam())
-                .storage(product.getStorage())
-                .screenSize(product.getScreenSize())
-                .description(product.getDescription())
-                .imageUrl(product.getImageUrl())
-                .stockQuantity(product.getStockQuantity())
-                .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
-                .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                .id(p.getId())
+                .name(p.getName())
+                .brand(p.getBrand())
+                .price(p.getPrice())
+                .color(p.getColor())
+                .ram(p.getRam())
+                .storage(p.getStorage())
+                .screenSize(p.getScreenSize())
+                .description(p.getDescription())
+                .imageUrl(p.getImageUrl())
+                .stockQuantity(p.getStockQuantity())
+                .categoryId(p.getCategory() != null ? p.getCategory().getId() : null)
+                .categoryName(p.getCategory() != null ? p.getCategory().getName() : null)
                 .build();
     }
 
-    private void mapRequestToEntity(ProductRequestDTO requestDTO, Product product, Category category) {
-        product.setName(requestDTO.getName()); // Use getter
-        product.setBrand(requestDTO.getBrand()); // Use getter
-        product.setPrice(requestDTO.getPrice()); // Use getter
-        product.setColor(requestDTO.getColor()); // Use getter
-        product.setRam(requestDTO.getRam()); // Use getter
-        product.setStorage(requestDTO.getStorage()); // Use getter
-        product.setScreenSize(requestDTO.getScreenSize()); // Use getter
-        product.setDescription(requestDTO.getDescription()); // Use getter
-        product.setImageUrl(requestDTO.getImageUrl()); // Use getter
-        product.setStockQuantity(requestDTO.getStockQuantity()); // Use getter
-        product.setCategory(category); // Use setter
+    private void mapRequestToEntity(ProductRequestDTO req, Product p, Category category) {
+        p.setName(req.getName());
+        p.setBrand(req.getBrand());
+        p.setPrice(req.getPrice());
+        p.setColor(req.getColor());
+        p.setRam(req.getRam());
+        p.setStorage(req.getStorage());
+        p.setScreenSize(req.getScreenSize());
+        p.setDescription(req.getDescription());
+        p.setImageUrl(req.getImageUrl());
+        p.setStockQuantity(req.getStockQuantity());
+        p.setCategory(category);
     }
 }
